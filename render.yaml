@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: fitfinesse-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+    healthCheckPath: /
