@@ -218,13 +218,16 @@ def signup(user: UserSignup):
         conn.close()
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Create Stripe Connect account and customer
-    try:
-        stripe_account_id = StripeService.create_connect_account(user.email, user.name)
-        stripe_customer_id = StripeService.create_customer(user.email, user.name)
-    except Exception as e:
-        conn.close()
-        raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}")
+    # TEMPORARILY DISABLED - Stripe setup needed
+    # try:
+    #     stripe_account_id = StripeService.create_connect_account(user.email, user.name)
+    #     stripe_customer_id = StripeService.create_customer(user.email, user.name)
+    # except Exception as e:
+    #     conn.close()
+    #     raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}")
+    
+    stripe_account_id = None
+    stripe_customer_id = None
     
     # Create user
     password_hash = hash_password(user.password)
