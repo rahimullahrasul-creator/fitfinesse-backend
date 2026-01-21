@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
+from typing import Optional
 from typing import List, Optional
 from datetime import datetime, timedelta
 import sqlite3
@@ -136,12 +137,12 @@ init_db()
 
 # Pydantic models
 class UserSignup(BaseModel):
-    email: EmailStr
+    email: str
     name: str
     password: str
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 class PoolCreate(BaseModel):
