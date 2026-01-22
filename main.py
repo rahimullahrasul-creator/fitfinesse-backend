@@ -17,7 +17,7 @@ app = FastAPI(title="Fit Finesse API")
 # CORS - allow frontend to connect
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update with actual domain in production
+    allow_origins=["https://fitfinesse-frontend.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
