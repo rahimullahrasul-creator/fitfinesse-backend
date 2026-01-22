@@ -288,6 +288,11 @@ def get_me(current_user = Depends(get_current_user)):
 
 @app.post("/pools")
 def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
+    # Validate stake limits
+    if pool.stake < 5:
+        raise HTTPException(status_code=400, detail="Minimum stake is $5")
+    if pool.stake > 100:
+        raise HTTPException(status_code=400, detail="Maximum stake is $100")
     conn = get_db()
     cursor = conn.cursor()
     
