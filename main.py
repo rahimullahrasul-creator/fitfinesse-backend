@@ -45,6 +45,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
+            phone TEXT,
             password_hash TEXT NOT NULL,
             stripe_account_id TEXT,
             stripe_customer_id TEXT,
@@ -140,6 +141,7 @@ class UserSignup(BaseModel):
     email: str
     name: str
     password: str
+    phone: str
 
 class UserLogin(BaseModel):
     email: str
@@ -232,9 +234,9 @@ def signup(user: UserSignup):
     # Create user
     password_hash = hash_password(user.password)
     cursor.execute(
-        "INSERT INTO users (email, name, password_hash, stripe_account_id, stripe_customer_id) VALUES (?, ?, ?, ?, ?)",
-        (user.email, user.name, password_hash, stripe_account_id, stripe_customer_id)
-    )
+    "INSERT INTO users (email, name, password_hash, phone, stripe_account_id, stripe_customer_id) VALUES (?, ?, ?, ?, ?, ?)",
+    (user.email, user.name, password_hash, user.phone, stripe_account_id, stripe_customer_id)
+)
     user_id = cursor.lastrowid
     conn.commit()
     conn.close()
