@@ -61,7 +61,7 @@ def init_db():
     # Users table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             phone TEXT,
@@ -77,7 +77,7 @@ def init_db():
     # Pools table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS pools (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             weekly_goal INTEGER NOT NULL,
             stake REAL NOT NULL,
@@ -93,7 +93,7 @@ def init_db():
     # Pool members table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS pool_members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             pool_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
             checkins INTEGER DEFAULT 0,
@@ -108,7 +108,7 @@ def init_db():
     # Check-ins table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS checkins (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             pool_id INTEGER NOT NULL,
             latitude REAL,
@@ -124,7 +124,7 @@ def init_db():
     # Transactions table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             pool_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
             amount REAL NOT NULL,
@@ -140,7 +140,7 @@ def init_db():
     # Session tokens table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             token TEXT UNIQUE NOT NULL,
             expires_at TIMESTAMP NOT NULL,
