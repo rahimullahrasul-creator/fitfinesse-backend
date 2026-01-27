@@ -43,7 +43,16 @@ engine = create_engine(
 )
 
 def get_db():
-    return engine.raw_connection()
+    import psycopg2.extras
+    conn = engine.raw_connection()
+    # For PostgreSQL, use RealDictCursor to get dictionary results
+    if 'postgresql' in str(engine.url):
+        conn.cursor_factory = psycopg2.extras.RealDictCursor
+    else:
+        # For SQLite fallback
+        import sqlite3
+        conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
     conn = get_db()
