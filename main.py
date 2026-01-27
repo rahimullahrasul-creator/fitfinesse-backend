@@ -191,7 +191,7 @@ def create_session_token(user_id: int) -> str:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)",
+        "INSERT INTO sessions (user_id, token, expires_at) VALUES (%s, %s, %s)",
         (user_id, token, expires_at)
     )
     conn.commit()
@@ -206,7 +206,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     cursor.execute("""
         SELECT u.* FROM users u
         JOIN sessions s ON u.id = s.user_id
-        WHERE s.token = ? AND s.expires_at > ?
+        WHERE s.token = %s AND s.expires_at > %s
     """, (token, datetime.now()))
     
     user = cursor.fetchone()
@@ -236,7 +236,7 @@ def signup(user: UserSignup):
     cursor = conn.cursor()
     
     # Check if user exists
-    cursor.execute("SELECT id FROM users WHERE email = ?", (user.email,))
+    cursor.execute("SELECT id FROM users WHERE email = %s", (user.email,))
     if cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -255,7 +255,7 @@ def signup(user: UserSignup):
     # Create user
     password_hash = hash_password(user.password)
     cursor.execute(
-    "INSERT INTO users (email, name, password_hash, phone, stripe_account_id, stripe_customer_id) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO users (email, name, password_hash, phone, stripe_account_id, stripe_customer_id) VALUES (%s, %s, %s, %s, %s, %s)",
     (user.email, user.name, password_hash, user.phone, stripe_account_id, stripe_customer_id)
 )
     user_id = cursor.lastrowid
@@ -282,7 +282,7 @@ def login(credentials: UserLogin):
     
     password_hash = hash_password(credentials.password)
     cursor.execute(
-        "SELECT * FROM users WHERE email = ? AND password_hash = ?",
+        "SELECT * FROM users WHERE email = %s AND password_hash = %s",
         (credentials.email, password_hash)
     )
     user = cursor.fetchone()
@@ -325,30 +325,30 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
     # Create pool
     cursor.execute("""
         INSERT INTO pools (name, weekly_goal, stake, creator_id, week_start, week_end)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s)
     """, (pool.name, pool.weekly_goal, pool.stake, current_user['id'], week_start, week_end))
     
     pool_id = cursor.lastrowid
     
     # Add creator as member
     cursor.execute(
-        "INSERT INTO pool_members (pool_id, user_id) VALUES (?, ?)",
+        "INSERT INTO pool_members (pool_id, user_id) VALUES (%s, %s)",
         (pool_id, current_user['id'])
     )
     
     # Add other members (if they exist)
     for email in pool.member_emails:
-        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
         member = cursor.fetchone()
         if member:
             cursor.execute(
-                "INSERT OR IGNORE INTO pool_members (pool_id, user_id) VALUES (?, ?)",
+                "INSERT OR IGNORE INTO pool_members (pool_id, user_id) VALUES (%s, %s)",
                 (pool_id, member['id'])
             )
     
     # Update user's total pools
     cursor.execute(
-        "UPDATE users SET total_pools = total_pools + 1 WHERE id = ?",
+        "UPDATE users SET total_pools = total_pools + 1 WHERE id = %s",
         (current_user['id'],)
     )
     
@@ -369,7 +369,7 @@ def get_pools(current_user = Depends(get_current_user)):
                pm.checkins as your_checkins
         FROM pools p
         JOIN pool_members pm ON p.id = pm.pool_id
-        WHERE pm.user_id = ? AND p.status = 'active'
+        WHERE pm.user_id = %s AND p.status = 'active'
         ORDER BY p.created_at DESC
     """, (current_user['id'],))
     
@@ -382,7 +382,7 @@ def get_pools(current_user = Depends(get_current_user)):
             SELECT u.name, pm.checkins
             FROM pool_members pm
             JOIN users u ON pm.user_id = u.id
-            WHERE pm.pool_id = ?
+            WHERE pm.pool_id = %s
         """, (pool['id'],))
         
         members = []
@@ -417,7 +417,7 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     
     # Verify user is in pool
     cursor.execute(
-        "SELECT checkins FROM pool_members WHERE pool_id = ? AND user_id = ?",
+        "SELECT checkins FROM pool_members WHERE pool_id = %s AND user_id = %s",
         (checkin.pool_id, current_user['id'])
     )
     member = cursor.fetchone()
@@ -429,7 +429,7 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     member = dict(member)
     
     # Check if already met goal
-    cursor.execute("SELECT weekly_goal FROM pools WHERE id = ?", (checkin.pool_id,))
+    cursor.execute("SELECT weekly_goal FROM pools WHERE id = %s", (checkin.pool_id,))
     pool = dict(cursor.fetchone())
     
     if member['checkins'] >= pool['weekly_goal']:
@@ -439,12 +439,12 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     # Create check-in
     cursor.execute("""
         INSERT INTO checkins (user_id, pool_id, latitude, longitude, photo_url)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s)
     """, (current_user['id'], checkin.pool_id, checkin.latitude, checkin.longitude, checkin.photo_url))
     
     # Update member's check-in count
     cursor.execute(
-        "UPDATE pool_members SET checkins = checkins + 1 WHERE pool_id = ? AND user_id = ?",
+        "UPDATE pool_members SET checkins = checkins + 1 WHERE pool_id = %s AND user_id = %s",
         (checkin.pool_id, current_user['id'])
     )
     
@@ -463,7 +463,7 @@ def get_stats(current_user = Depends(get_current_user)):
     cursor.execute("""
         SELECT COUNT(*) as total_checkins
         FROM checkins
-        WHERE user_id = ? AND DATE(created_at) BETWEEN ? AND ?
+        WHERE user_id = %s AND DATE(created_at) BETWEEN %s AND %s
     """, (current_user['id'], week_start, week_end))
     
     total_checkins = dict(cursor.fetchone())['total_checkins']
@@ -472,7 +472,7 @@ def get_stats(current_user = Depends(get_current_user)):
     cursor.execute("""
         SELECT COUNT(DISTINCT strftime('%Y-%W', created_at)) as weeks_active
         FROM checkins
-        WHERE user_id = ?
+        WHERE user_id = %s
     """, (current_user['id'],))
     
     streak = dict(cursor.fetchone())['weeks_active']
@@ -484,7 +484,7 @@ def get_stats(current_user = Depends(get_current_user)):
             SUM(CASE WHEN pm.checkins >= p.weekly_goal THEN 1 ELSE 0 END) as wins
         FROM pool_members pm
         JOIN pools p ON pm.pool_id = p.id
-        WHERE pm.user_id = ? AND p.status = 'completed'
+        WHERE pm.user_id = %s AND p.status = 'completed'
     """, (current_user['id'],))
     
     pool_stats = dict(cursor.fetchone())
@@ -509,7 +509,7 @@ def settle_pool(pool_id: int, current_user = Depends(get_current_user)):
     cursor = conn.cursor()
     
     # Get pool details
-    cursor.execute("SELECT * FROM pools WHERE id = ?", (pool_id,))
+    cursor.execute("SELECT * FROM pools WHERE id = %s", (pool_id,))
     pool = dict(cursor.fetchone())
     
     # Get all members and their check-ins
@@ -517,7 +517,7 @@ def settle_pool(pool_id: int, current_user = Depends(get_current_user)):
         SELECT u.id, u.name, u.stripe_account_id, pm.checkins
         FROM pool_members pm
         JOIN users u ON pm.user_id = u.id
-        WHERE pm.pool_id = ?
+        WHERE pm.pool_id = %s
     """, (pool_id,))
     
     members = [dict(row) for row in cursor.fetchall()]
@@ -544,12 +544,12 @@ def settle_pool(pool_id: int, current_user = Depends(get_current_user)):
         # Update winner balances
         for winner in winners:
             cursor.execute(
-                "UPDATE users SET total_winnings = total_winnings + ? WHERE id = ?",
+                "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
                 (payout_result['payout_per_winner'], winner['id'])
             )
         
         # Mark pool as completed
-        cursor.execute("UPDATE pools SET status = 'completed' WHERE id = ?", (pool_id,))
+        cursor.execute("UPDATE pools SET status = 'completed' WHERE id = %s", (pool_id,))
         
         conn.commit()
         conn.close()
