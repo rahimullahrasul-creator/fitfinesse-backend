@@ -47,7 +47,9 @@ def get_db():
     conn = engine.raw_connection()
     # For PostgreSQL, use RealDictCursor to get dictionary results
     if 'postgresql' in str(engine.url):
-        conn.cursor_factory = psycopg2.extras.RealDictCursor
+        # Create a cursor with RealDictCursor
+        original_cursor = conn.cursor
+        conn.cursor = lambda: original_cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     else:
         # For SQLite fallback
         import sqlite3
