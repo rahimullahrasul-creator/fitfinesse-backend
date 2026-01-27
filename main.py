@@ -114,7 +114,7 @@ def init_db():
             latitude REAL,
             longitude REAL,
             photo_url TEXT,
-            verified BOOLEAN DEFAULT 1,
+            verified BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (pool_id) REFERENCES pools(id)
