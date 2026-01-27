@@ -255,10 +255,10 @@ def signup(user: UserSignup):
     # Create user
     password_hash = hash_password(user.password)
     cursor.execute(
-    "INSERT INTO users (email, name, password_hash, phone, stripe_account_id, stripe_customer_id) VALUES (%s, %s, %s, %s, %s, %s)",
+    "INSERT INTO users (email, name, password_hash, phone, stripe_account_id, stripe_customer_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
     (user.email, user.name, password_hash, user.phone, stripe_account_id, stripe_customer_id)
 )
-    user_id = cursor.lastrowid
+user_id = cursor.fetchone()['id']
     conn.commit()
     conn.close()
     
