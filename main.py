@@ -5,12 +5,13 @@ from pydantic import BaseModel
 from typing import Optional
 from typing import List, Optional
 from datetime import datetime, timedelta
-import sqlite3
 import hashlib
 import secrets
 import json
 import os
 from stripe_service import StripeService
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import StaticPool
 
 app = FastAPI(title="Fit Finesse API")
 
@@ -27,13 +28,22 @@ app.add_middleware(
 security = HTTPBearer()
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
 
-# Database setup
-DB_PATH = "fitfinesse.db"
+# Database setup with PostgreSQL
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///fitfinesse.db')
+
+# Fix postgres:// to postgresql://
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+# Create engine
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=StaticPool if DATABASE_URL.startswith('sqlite') else None,
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith('sqlite') else {}
+)
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return engine.raw_connection()
 
 def init_db():
     conn = get_db()
