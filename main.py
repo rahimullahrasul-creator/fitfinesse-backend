@@ -470,10 +470,10 @@ def get_stats(current_user = Depends(get_current_user)):
     
     # Get longest streak (simplified - count consecutive weeks with check-ins)
     cursor.execute("""
-        SELECT COUNT(DISTINCT strftime('%Y-%W', created_at)) as weeks_active
-        FROM checkins
-        WHERE user_id = %s
-    """, (current_user['id'],))
+    SELECT COUNT(DISTINCT TO_CHAR(created_at, 'IYYY-IW')) as weeks_active
+    FROM checkins
+    WHERE user_id = %s
+""", (current_user['id'],))
     
     streak = dict(cursor.fetchone())['weeks_active']
     
