@@ -323,12 +323,12 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
     week_start, week_end = get_week_range()
     
     # Create pool
-cursor.execute("""
-    INSERT INTO pools (name, weekly_goal, stake, creator_id, week_start, week_end)
-    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-""", (pool.name, pool.weekly_goal, pool.stake, current_user['id'], week_start, week_end))
-
-pool_id = cursor.fetchone()['id']
+    cursor.execute("""
+        INSERT INTO pools (name, weekly_goal, stake, creator_id, week_start, week_end)
+        VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+    """, (pool.name, pool.weekly_goal, pool.stake, current_user['id'], week_start, week_end))
+    
+    pool_id = cursor.fetchone()['id']
     
     # Add creator as member
     cursor.execute(
