@@ -316,6 +316,7 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Minimum stake is $5")
     if pool.stake > 100:
         raise HTTPException(status_code=400, detail="Maximum stake is $100")
+    
     conn = get_db()
     cursor = conn.cursor()
     
@@ -337,14 +338,14 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
     )
     
     # Add other members (if they exist) - status = 'pending'
-for email in pool.member_emails:
-    cursor.execute("SELECT id, phone FROM users WHERE email = %s", (email,))
-    member = cursor.fetchone()
-    if member:
-        cursor.execute(
-            "INSERT INTO pool_members (pool_id, user_id, status) VALUES (%s, %s, %s) ON CONFLICT (pool_id, user_id) DO NOTHING",
-            (pool_id, member['id'], 'pending')
-        )
+    for email in pool.member_emails:
+        cursor.execute("SELECT id, phone FROM users WHERE email = %s", (email,))
+        member = cursor.fetchone()
+        if member:
+            cursor.execute(
+                "INSERT INTO pool_members (pool_id, user_id, status) VALUES (%s, %s, %s) ON CONFLICT (pool_id, user_id) DO NOTHING",
+                (pool_id, member['id'], 'pending')
+            )
     
     # Update user's total pools
     cursor.execute(
