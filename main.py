@@ -99,7 +99,7 @@ def init_db():
             pool_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
             checkins INTEGER DEFAULT 0,
-            status TEXT DEFAULT 'active',
+            status TEXT DEFAULT 'pending',
             joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (pool_id) REFERENCES pools(id),
             FOREIGN KEY (user_id) REFERENCES users(id),
@@ -330,21 +330,21 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
     
     pool_id = cursor.fetchone()['id']
     
-    # Add creator as member
+    # Add creator as member (auto-accepted)
     cursor.execute(
-        "INSERT INTO pool_members (pool_id, user_id) VALUES (%s, %s)",
-        (pool_id, current_user['id'])
+        "INSERT INTO pool_members (pool_id, user_id, status) VALUES (%s, %s, %s)",
+        (pool_id, current_user['id'], 'active')
     )
     
-    # Add other members (if they exist)
-    for email in pool.member_emails:
-        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-        member = cursor.fetchone()
-        if member:
-            cursor.execute(
-                "INSERT OR IGNORE INTO pool_members (pool_id, user_id) VALUES (%s, %s)",
-                (pool_id, member['id'])
-            )
+    # Add other members (if they exist) - status = 'pending'
+for email in pool.member_emails:
+    cursor.execute("SELECT id, phone FROM users WHERE email = %s", (email,))
+    member = cursor.fetchone()
+    if member:
+        cursor.execute(
+            "INSERT INTO pool_members (pool_id, user_id, status) VALUES (%s, %s, %s) ON CONFLICT (pool_id, user_id) DO NOTHING",
+            (pool_id, member['id'], 'pending')
+        )
     
     # Update user's total pools
     cursor.execute(
