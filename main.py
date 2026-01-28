@@ -354,8 +354,7 @@ for email in pool.member_emails:
     
     conn.commit()
     conn.close()
-    
-        return {"pool_id": pool_id, "message": "Pool created successfully"}
+    return {"pool_id": pool_id, "message": "Pool created successfully"}
     
 @app.get("/pools")
 def get_pools(current_user = Depends(get_current_user)):
