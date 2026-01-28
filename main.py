@@ -452,7 +452,61 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     conn.close()
     
     return {"message": "Check-in recorded successfully"}
+    
+@app.post("/pools/{pool_id}/accept")
+def accept_pool_invitation(pool_id: int, current_user = Depends(get_current_user)):
+    """Accept a pool invitation"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if user has pending invitation
+    cursor.execute(
+        "SELECT * FROM pool_members WHERE pool_id = %s AND user_id = %s AND status = 'pending'",
+        (pool_id, current_user['id'])
+    )
+    
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="No pending invitation found")
+    
+    # Update status to active
+    cursor.execute(
+        "UPDATE pool_members SET status = 'active' WHERE pool_id = %s AND user_id = %s",
+        (pool_id, current_user['id'])
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Pool invitation accepted"}
 
+@app.post("/pools/{pool_id}/reject")
+def reject_pool_invitation(pool_id: int, current_user = Depends(get_current_user)):
+    """Reject a pool invitation"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if user has pending invitation
+    cursor.execute(
+        "SELECT * FROM pool_members WHERE pool_id = %s AND user_id = %s AND status = 'pending'",
+        (pool_id, current_user['id'])
+    )
+    
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="No pending invitation found")
+    
+    # Remove from pool
+    cursor.execute(
+        "DELETE FROM pool_members WHERE pool_id = %s AND user_id = %s",
+        (pool_id, current_user['id'])
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Pool invitation rejected"}
+    
 @app.get("/stats")
 def get_stats(current_user = Depends(get_current_user)):
     conn = get_db()
