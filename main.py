@@ -431,6 +431,19 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     
     member = dict(member)
     
+    # Check if already checked in today
+cursor.execute("""
+    SELECT COUNT(*) as today_checkins
+    FROM checkins
+    WHERE user_id = %s AND pool_id = %s AND DATE(created_at) = CURRENT_DATE
+""", (current_user['id'], checkin.pool_id))
+
+today_checkins = dict(cursor.fetchone())['today_checkins']
+
+if today_checkins > 0:
+    conn.close()
+    raise HTTPException(status_code=400, detail="Already checked in today")
+    
     # Check if already met goal
     cursor.execute("SELECT weekly_goal FROM pools WHERE id = %s", (checkin.pool_id,))
     pool = dict(cursor.fetchone())
@@ -551,13 +564,25 @@ def get_stats(current_user = Depends(get_current_user)):
     
     conn.close()
     
-    return {
-        "total_winnings": current_user['total_winnings'],
-        "total_pools": current_user['total_pools'],
-        "win_rate": win_rate,
-        "current_streak": streak,
-        "total_checkins_this_week": total_checkins
-    }
+    # Get actual pool count (active memberships)
+cursor.execute("""
+    SELECT COUNT(*) as pool_count
+    FROM pool_members pm
+    JOIN pools p ON pm.pool_id = p.id
+    WHERE pm.user_id = %s AND pm.status = 'active' AND p.status = 'active'
+""", (current_user['id'],))
+
+active_pools = dict(cursor.fetchone())['pool_count']
+
+conn.close()
+
+return {
+    "total_winnings": current_user['total_winnings'],
+    "total_pools": active_pools,
+    "win_rate": win_rate,
+    "current_streak": streak,
+    "total_checkins_this_week": total_checkins
+}
 
 @app.post("/pools/{pool_id}/settle")
 def settle_pool(pool_id: int, current_user = Depends(get_current_user)):
