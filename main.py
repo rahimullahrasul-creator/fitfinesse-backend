@@ -363,27 +363,28 @@ def get_pools(current_user = Depends(get_current_user)):
     conn = get_db()
     cursor = conn.cursor()
     
-    # Get user's active pools
+    # Get user's pools (both active and pending)
     cursor.execute("""
         SELECT p.*, 
-               (SELECT COUNT(*) FROM pool_members WHERE pool_id = p.id) as member_count,
-               pm.checkins as your_checkins
+               (SELECT COUNT(*) FROM pool_members WHERE pool_id = p.id AND status = 'active') as member_count,
+               pm.checkins as your_checkins,
+               pm.status as your_status
         FROM pools p
         JOIN pool_members pm ON p.id = pm.pool_id
         WHERE pm.user_id = %s AND p.status = 'active'
-        ORDER BY p.created_at DESC
+        ORDER BY pm.status ASC, p.created_at DESC
     """, (current_user['id'],))
     
     pools = []
     for row in cursor.fetchall():
         pool = dict(row)
         
-        # Get members and their check-ins
+        # Get active members and their check-ins
         cursor.execute("""
             SELECT u.name, pm.checkins
             FROM pool_members pm
             JOIN users u ON pm.user_id = u.id
-            WHERE pm.pool_id = %s
+            WHERE pm.pool_id = %s AND pm.status = 'active'
         """, (pool['id'],))
         
         members = []
@@ -393,7 +394,7 @@ def get_pools(current_user = Depends(get_current_user)):
             members.append(member_dict['name'])
             member_status[member_dict['name']] = member_dict['checkins']
         
-        # Calculate pot
+        # Calculate pot (only count active members)
         pot = pool['stake'] * pool['member_count']
         
         pools.append({
@@ -403,6 +404,7 @@ def get_pools(current_user = Depends(get_current_user)):
             "stake": pool['stake'],
             "pot": pot,
             "your_checkins": pool['your_checkins'],
+            "your_status": pool['your_status'],
             "members": members,
             "member_status": member_status,
             "week_end": pool['week_end']
