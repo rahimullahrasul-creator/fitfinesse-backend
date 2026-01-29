@@ -540,10 +540,10 @@ def get_stats(current_user = Depends(get_current_user)):
     
     # Get longest streak (simplified - count consecutive weeks with check-ins)
     cursor.execute("""
-    SELECT COUNT(DISTINCT TO_CHAR(created_at, 'IYYY-IW')) as weeks_active
-    FROM checkins
-    WHERE user_id = %s
-""", (current_user['id'],))
+        SELECT COUNT(DISTINCT TO_CHAR(created_at, 'IYYY-IW')) as weeks_active
+        FROM checkins
+        WHERE user_id = %s
+    """, (current_user['id'],))
     
     streak = dict(cursor.fetchone())['weeks_active']
     
@@ -562,27 +562,25 @@ def get_stats(current_user = Depends(get_current_user)):
     if pool_stats['total_pools'] > 0:
         win_rate = int((pool_stats['wins'] / pool_stats['total_pools']) * 100)
     
+    # Get actual pool count (active memberships)
+    cursor.execute("""
+        SELECT COUNT(*) as pool_count
+        FROM pool_members pm
+        JOIN pools p ON pm.pool_id = p.id
+        WHERE pm.user_id = %s AND pm.status = 'active' AND p.status = 'active'
+    """, (current_user['id'],))
+    
+    active_pools = dict(cursor.fetchone())['pool_count']
+    
     conn.close()
     
-    # Get actual pool count (active memberships)
-cursor.execute("""
-    SELECT COUNT(*) as pool_count
-    FROM pool_members pm
-    JOIN pools p ON pm.pool_id = p.id
-    WHERE pm.user_id = %s AND pm.status = 'active' AND p.status = 'active'
-""", (current_user['id'],))
-
-active_pools = dict(cursor.fetchone())['pool_count']
-
-conn.close()
-
-return {
-    "total_winnings": current_user['total_winnings'],
-    "total_pools": active_pools,
-    "win_rate": win_rate,
-    "current_streak": streak,
-    "total_checkins_this_week": total_checkins
-}
+    return {
+        "total_winnings": current_user['total_winnings'],
+        "total_pools": active_pools,
+        "win_rate": win_rate,
+        "current_streak": streak,
+        "total_checkins_this_week": total_checkins
+    }
 
 @app.post("/pools/{pool_id}/settle")
 def settle_pool(pool_id: int, current_user = Depends(get_current_user)):
