@@ -432,17 +432,17 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     member = dict(member)
     
     # Check if already checked in today
-cursor.execute("""
-    SELECT COUNT(*) as today_checkins
-    FROM checkins
-    WHERE user_id = %s AND pool_id = %s AND DATE(created_at) = CURRENT_DATE
-""", (current_user['id'], checkin.pool_id))
-
-today_checkins = dict(cursor.fetchone())['today_checkins']
-
-if today_checkins > 0:
-    conn.close()
-    raise HTTPException(status_code=400, detail="Already checked in today")
+    cursor.execute("""
+        SELECT COUNT(*) as today_checkins
+        FROM checkins
+        WHERE user_id = %s AND pool_id = %s AND DATE(created_at) = CURRENT_DATE
+    """, (current_user['id'], checkin.pool_id))
+    
+    today_checkins = dict(cursor.fetchone())['today_checkins']
+    
+    if today_checkins > 0:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Already checked in today")
     
     # Check if already met goal
     cursor.execute("SELECT weekly_goal FROM pools WHERE id = %s", (checkin.pool_id,))
