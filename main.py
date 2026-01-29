@@ -522,6 +522,44 @@ def reject_pool_invitation(pool_id: int, current_user = Depends(get_current_user
     conn.close()
     
     return {"message": "Pool invitation rejected"}
+
+@app.delete("/pools/{pool_id}")
+def cancel_pool(pool_id: int, current_user = Depends(get_current_user)):
+    """Cancel a pool (creator only, before week starts)"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get pool details
+    cursor.execute("SELECT * FROM pools WHERE id = %s", (pool_id,))
+    pool = cursor.fetchone()
+    
+    if not pool:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Pool not found")
+    
+    pool = dict(pool)
+    
+    # Verify user is the creator
+    if pool['creator_id'] != current_user['id']:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Only the pool creator can cancel")
+    
+    # Check if week has started
+    from datetime import date
+    if date.today() >= pool['week_start']:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Cannot cancel after week has started")
+    
+    # Delete pool members first (foreign key constraint)
+    cursor.execute("DELETE FROM pool_members WHERE pool_id = %s", (pool_id,))
+    
+    # Delete the pool
+    cursor.execute("DELETE FROM pools WHERE id = %s", (pool_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Pool cancelled successfully"}
     
 @app.get("/stats")
 def get_stats(current_user = Depends(get_current_user)):
