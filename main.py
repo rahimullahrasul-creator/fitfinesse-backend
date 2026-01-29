@@ -405,6 +405,7 @@ def get_pools(current_user = Depends(get_current_user)):
             "pot": pot,
             "your_checkins": pool['your_checkins'],
             "your_status": pool['your_status'],
+            "creator_id": pool['creator_id'],
             "members": members,
             "member_status": member_status,
             "week_end": pool['week_end']
