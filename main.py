@@ -217,12 +217,20 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     
     return dict(user)
 
-def get_week_range():
-    """Get current week's Monday-Sunday range"""
-    today = datetime.now().date()
-    monday = today - timedelta(days=today.weekday())
-    sunday = monday + timedelta(days=6)
-    return monday, sunday
+def get_next_week_range():
+    """Get the date range for NEXT week (next Monday to Sunday)"""
+    from datetime import date, timedelta
+    today = date.today()
+    
+    # Calculate next Monday
+    days_until_monday = (7 - today.weekday()) % 7
+    if days_until_monday == 0:  # If today is Monday
+        days_until_monday = 7  # Get NEXT Monday, not today
+    
+    next_monday = today + timedelta(days=days_until_monday)
+    next_sunday = next_monday + timedelta(days=6)
+    
+    return next_monday, next_sunday
 
 # Routes
 
@@ -321,7 +329,7 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
     cursor = conn.cursor()
     
     # Get week range
-    week_start, week_end = get_week_range()
+    week_start, week_end = get_next_week_range()
     
     # Create pool
     cursor.execute("""
