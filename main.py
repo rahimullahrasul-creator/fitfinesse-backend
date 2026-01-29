@@ -547,6 +547,7 @@ def cancel_pool(pool_id: int, current_user = Depends(get_current_user)):
     
     # Check if week has started
     from datetime import date
+    print(f"Today: {date.today()}, Week start: {pool['week_start']}")  # Debug log
     if date.today() >= pool['week_start']:
         conn.close()
         raise HTTPException(status_code=400, detail="Cannot cancel after week has started")
