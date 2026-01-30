@@ -428,6 +428,7 @@ def get_pools(current_user = Depends(get_current_user)):
             "creator_id": pool['creator_id'],
             "members": members,
             "member_status": member_status,
+            "week_start": pool['week_start'],
             "week_end": pool['week_end']
         })
     
