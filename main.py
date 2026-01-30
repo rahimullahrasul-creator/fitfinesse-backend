@@ -217,6 +217,18 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     
     return dict(user)
 
+def get_week_range():
+    """Get the current week's date range (Monday to Sunday)"""
+    from datetime import date, timedelta
+    today = date.today()
+    
+    # Calculate this week's Monday
+    days_since_monday = today.weekday()
+    week_start = today - timedelta(days=days_since_monday)
+    week_end = week_start + timedelta(days=6)
+    
+    return week_start, week_end
+
 def get_next_week_range():
     """Get the date range for NEXT week (next Monday to Sunday)"""
     from datetime import date, timedelta
