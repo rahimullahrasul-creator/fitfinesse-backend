@@ -417,10 +417,10 @@ def get_pools(current_user = Depends(get_current_user)):
         # Calculate pot (only count active members)
         pot = pool['stake'] * pool['member_count']
         
-# Get creator's name
-cursor.execute("SELECT name FROM users WHERE id = %s", (pool['creator_id'],))
-creator = cursor.fetchone()
-creator_name = dict(creator)['name'] if creator else "Unknown"
+        # Get creator's name
+        cursor.execute("SELECT name FROM users WHERE id = %s", (pool['creator_id'],))
+        creator = cursor.fetchone()
+        creator_name = dict(creator)['name'] if creator else "Unknown"
         
         pools.append({
             "id": pool['id'],
