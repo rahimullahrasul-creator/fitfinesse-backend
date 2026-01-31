@@ -813,6 +813,16 @@ def create_payment_setup(current_user = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}")
 
+@app.post("/admin/trigger-completion")
+def manual_trigger_completion(current_user = Depends(get_current_user)):
+    """
+    Manual trigger for testing - completes pools that ended yesterday.
+    Remove this before production launch.
+    """
+    complete_weekly_pools()
+    return {"message": "Pool completion triggered successfully"}
+
+
 def complete_weekly_pools():
     """
     Runs every Monday at 12:01 AM to complete pools from the previous week.
