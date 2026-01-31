@@ -589,7 +589,7 @@ def get_pools(current_user = Depends(get_current_user)):
             "members": members,
             "member_status": member_status,
             "week_start": pool['week_start'],
-            "week_end": pool['week_end']
+            "week_end": pool['week_end'],
             "checked_in_today": checked_in_today
         })
     
