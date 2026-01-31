@@ -26,6 +26,110 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def complete_weekly_pools():
+    """
+    Runs every Monday at 12:01 AM to complete pools from the previous week.
+    Determines winners/losers and distributes payouts.
+    """
+    from datetime import date, timedelta
+    
+    print(f"[CRON] Running weekly pool completion at {date.today()}")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get yesterday's date (Sunday)
+    yesterday = date.today() - timedelta(days=1)
+    
+    # Find all active pools that ended yesterday (Sunday)
+    cursor.execute("""
+        SELECT * FROM pools 
+        WHERE status = 'active' 
+        AND week_end = %s
+    """, (yesterday,))
+    
+    pools_to_complete = cursor.fetchall()
+    
+    print(f"[CRON] Found {len(pools_to_complete)} pools to complete")
+    
+    for pool_row in pools_to_complete:
+        pool = dict(pool_row)
+        pool_id = pool['id']
+        
+        print(f"[CRON] Completing pool {pool_id}: {pool['name']}")
+        
+        # Get all active members and their check-ins
+        cursor.execute("""
+            SELECT pm.user_id, pm.checkins, u.name
+            FROM pool_members pm
+            JOIN users u ON pm.user_id = u.id
+            WHERE pm.pool_id = %s AND pm.status = 'active'
+        """, (pool_id,))
+        
+        members = cursor.fetchall()
+        
+        # Determine winners and losers
+        winners = []
+        losers = []
+        
+        for member_row in members:
+            member = dict(member_row)
+            if member['checkins'] >= pool['weekly_goal']:
+                winners.append(member)
+            else:
+                losers.append(member)
+        
+        print(f"[CRON] Pool {pool_id}: {len(winners)} winners, {len(losers)} losers")
+        
+        # Calculate payouts
+        total_pot = pool['stake'] * len(members)
+        platform_fee_rate = 0.05  # 5%
+        
+        if len(winners) == 0:
+            # Nobody won - 100% to charity
+            print(f"[CRON] Pool {pool_id}: No winners, ${total_pot} to charity")
+            # TODO: Track charity donations
+            
+        elif len(losers) == 0:
+            # Everyone won - refund minus platform fee
+            platform_fee = total_pot * platform_fee_rate
+            refund_per_person = (total_pot - platform_fee) / len(winners)
+            
+            print(f"[CRON] Pool {pool_id}: All won, refund ${refund_per_person:.2f} each")
+            
+            for winner in winners:
+                cursor.execute(
+                    "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
+                    (refund_per_person, winner['user_id'])
+                )
+        
+        else:
+            # Mixed results - winners split losers' stakes
+            losers_pot = pool['stake'] * len(losers)
+            platform_fee = losers_pot * platform_fee_rate
+            winners_pot = losers_pot - platform_fee
+            payout_per_winner = winners_pot / len(winners)
+            
+            print(f"[CRON] Pool {pool_id}: Winners get ${payout_per_winner:.2f} each")
+            
+            for winner in winners:
+                cursor.execute(
+                    "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
+                    (payout_per_winner, winner['user_id'])
+                )
+        
+        # Mark pool as completed
+        cursor.execute(
+            "UPDATE pools SET status = 'completed' WHERE id = %s",
+            (pool_id,)
+        )
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"[CRON] Completed {len(pools_to_complete)} pools successfully")
+
 # Initialize scheduler
 scheduler = BackgroundScheduler()
 
@@ -821,110 +925,7 @@ def manual_trigger_completion(current_user = Depends(get_current_user)):
     """
     complete_weekly_pools()
     return {"message": "Pool completion triggered successfully"}
-
-
-def complete_weekly_pools():
-    """
-    Runs every Monday at 12:01 AM to complete pools from the previous week.
-    Determines winners/losers and distributes payouts.
-    """
-    from datetime import date, timedelta
     
-    print(f"[CRON] Running weekly pool completion at {date.today()}")
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Get yesterday's date (Sunday)
-    yesterday = date.today() - timedelta(days=1)
-    
-    # Find all active pools that ended yesterday (Sunday)
-    cursor.execute("""
-        SELECT * FROM pools 
-        WHERE status = 'active' 
-        AND week_end = %s
-    """, (yesterday,))
-    
-    pools_to_complete = cursor.fetchall()
-    
-    print(f"[CRON] Found {len(pools_to_complete)} pools to complete")
-    
-    for pool_row in pools_to_complete:
-        pool = dict(pool_row)
-        pool_id = pool['id']
-        
-        print(f"[CRON] Completing pool {pool_id}: {pool['name']}")
-        
-        # Get all active members and their check-ins
-        cursor.execute("""
-            SELECT pm.user_id, pm.checkins, u.name
-            FROM pool_members pm
-            JOIN users u ON pm.user_id = u.id
-            WHERE pm.pool_id = %s AND pm.status = 'active'
-        """, (pool_id,))
-        
-        members = cursor.fetchall()
-        
-        # Determine winners and losers
-        winners = []
-        losers = []
-        
-        for member_row in members:
-            member = dict(member_row)
-            if member['checkins'] >= pool['weekly_goal']:
-                winners.append(member)
-            else:
-                losers.append(member)
-        
-        print(f"[CRON] Pool {pool_id}: {len(winners)} winners, {len(losers)} losers")
-        
-        # Calculate payouts
-        total_pot = pool['stake'] * len(members)
-        platform_fee_rate = 0.05  # 5%
-        
-        if len(winners) == 0:
-            # Nobody won - 100% to charity
-            print(f"[CRON] Pool {pool_id}: No winners, ${total_pot} to charity")
-            # TODO: Track charity donations
-            
-        elif len(losers) == 0:
-            # Everyone won - refund minus platform fee
-            platform_fee = total_pot * platform_fee_rate
-            refund_per_person = (total_pot - platform_fee) / len(winners)
-            
-            print(f"[CRON] Pool {pool_id}: All won, refund ${refund_per_person:.2f} each")
-            
-            for winner in winners:
-                cursor.execute(
-                    "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
-                    (refund_per_person, winner['user_id'])
-                )
-        
-        else:
-            # Mixed results - winners split losers' stakes
-            losers_pot = pool['stake'] * len(losers)
-            platform_fee = losers_pot * platform_fee_rate
-            winners_pot = losers_pot - platform_fee
-            payout_per_winner = winners_pot / len(winners)
-            
-            print(f"[CRON] Pool {pool_id}: Winners get ${payout_per_winner:.2f} each")
-            
-            for winner in winners:
-                cursor.execute(
-                    "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
-                    (payout_per_winner, winner['user_id'])
-                )
-        
-        # Mark pool as completed
-        cursor.execute(
-            "UPDATE pools SET status = 'completed' WHERE id = %s",
-            (pool_id,)
-        )
-    
-    conn.commit()
-    conn.close()
-    
-    print(f"[CRON] Completed {len(pools_to_complete)} pools successfully")
 
 if __name__ == "__main__":
     import uvicorn
