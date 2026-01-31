@@ -339,6 +339,25 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
     
     conn = get_db()
     cursor = conn.cursor()
+
+    # Check if user already has 5 active pools
+    cursor.execute("""
+        SELECT COUNT(*) as active_count
+        FROM pool_members pm
+        JOIN pools p ON pm.pool_id = p.id
+        WHERE pm.user_id = %s 
+        AND pm.status = 'active' 
+        AND p.status = 'active'
+    """, (current_user['id'],))
+    
+    active_count = dict(cursor.fetchone())['active_count']
+    
+    if active_count >= 5:
+        conn.close()
+        raise HTTPException(
+            status_code=400, 
+            detail="You've reached the maximum of 5 active pools. Wait for a pool to complete before creating a new one."
+        )
     
     # Get week range
     week_start, week_end = get_next_week_range()
@@ -502,6 +521,25 @@ def accept_pool_invitation(pool_id: int, current_user = Depends(get_current_user
     """Accept a pool invitation"""
     conn = get_db()
     cursor = conn.cursor()
+
+    # Check if user already has 5 active pools
+    cursor.execute("""
+        SELECT COUNT(*) as active_count
+        FROM pool_members pm
+        JOIN pools p ON pm.pool_id = p.id
+        WHERE pm.user_id = %s 
+        AND pm.status = 'active' 
+        AND p.status = 'active'
+    """, (current_user['id'],))
+    
+    active_count = dict(cursor.fetchone())['active_count']
+    
+    if active_count >= 5:
+        conn.close()
+        raise HTTPException(
+            status_code=400, 
+            detail="You've reached the maximum of 5 active pools. Wait for a pool to complete before joining a new one."
+        )
     
     # Check if user has pending invitation
     cursor.execute(
