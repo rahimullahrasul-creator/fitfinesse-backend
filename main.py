@@ -84,19 +84,20 @@ def complete_weekly_pools():
         
         # Calculate payouts
         total_pot = pool['stake'] * len(members)
-        platform_fee_rate = 0.05  # 5%
         
         if len(winners) == 0:
-            # Nobody won - 100% to charity
-            print(f"[CRON] Pool {pool_id}: No winners, ${total_pot} to charity")
-            # TODO: Track charity donations
+            # Nobody won - 50% to charity, 50% operational costs
+            charity_amount = total_pot * 0.5
+            operational_amount = total_pot * 0.5
+            
+            print(f"[CRON] Pool {pool_id}: No winners, ${charity_amount:.2f} to charity, ${operational_amount:.2f} operational")
+            # TODO: Track charity donations and operational revenue
             
         elif len(losers) == 0:
-            # Everyone won - refund minus platform fee
-            platform_fee = total_pot * platform_fee_rate
-            refund_per_person = (total_pot - platform_fee) / len(winners)
+            # Everyone won - full refund, no fee
+            refund_per_person = pool['stake']
             
-            print(f"[CRON] Pool {pool_id}: All won, refund ${refund_per_person:.2f} each")
+            print(f"[CRON] Pool {pool_id}: All won, full refund ${refund_per_person:.2f} each")
             
             for winner in winners:
                 cursor.execute(
@@ -105,18 +106,21 @@ def complete_weekly_pools():
                 )
         
         else:
-            # Mixed results - winners split losers' stakes
+            # Mixed results - 5% fee ONLY on losers' stakes
             losers_pot = pool['stake'] * len(losers)
-            platform_fee = losers_pot * platform_fee_rate
+            platform_fee = losers_pot * 0.05
             winners_pot = losers_pot - platform_fee
             payout_per_winner = winners_pot / len(winners)
             
-            print(f"[CRON] Pool {pool_id}: Winners get ${payout_per_winner:.2f} each")
+            # Winners also get their stake back
+            total_payout_per_winner = pool['stake'] + payout_per_winner
+            
+            print(f"[CRON] Pool {pool_id}: Winners get ${total_payout_per_winner:.2f} each (stake + ${payout_per_winner:.2f} profit)")
             
             for winner in winners:
                 cursor.execute(
                     "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
-                    (payout_per_winner, winner['user_id'])
+                    (total_payout_per_winner, winner['user_id'])
                 )
         
         # Mark pool as completed
