@@ -566,7 +566,7 @@ def get_pools(current_user = Depends(get_current_user)):
         cursor.execute("""
         SELECT COUNT(*) as today_checkin
         FROM checkins
-        WHERE user_id = %s AND pool_id = %s AND DATE(created_at) = CURRENT_DATE
+        WHERE user_id = %s AND pool_id = %s AND DATE(created_at AT TIME ZONE 'America/Chicago') = DATE(NOW() AT TIME ZONE 'America/Chicago')
         """, (current_user['id'], pool['id']))
 
         checked_in_today = dict(cursor.fetchone())['today_checkin'] > 0
@@ -618,7 +618,7 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     cursor.execute("""
         SELECT COUNT(*) as today_checkins
         FROM checkins
-        WHERE user_id = %s AND pool_id = %s AND DATE(created_at) = CURRENT_DATE
+        WHERE user_id = %s AND pool_id = %s AND DATE(created_at AT TIME ZONE 'America/Chicago') = DATE(NOW() AT TIME ZONE 'America/Chicago')
     """, (current_user['id'], checkin.pool_id))
     
     today_checkins = dict(cursor.fetchone())['today_checkins']
