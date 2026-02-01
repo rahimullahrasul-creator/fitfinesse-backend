@@ -622,6 +622,9 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     """, (current_user['id'], checkin.pool_id))
     
     today_checkins = dict(cursor.fetchone())['today_checkins']
+
+
+    print(f"[DEBUG] User {current_user['id']} pool {checkin.pool_id}: today_checkins = {today_checkins}")
     
     if today_checkins > 0:
         conn.close()
