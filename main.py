@@ -562,14 +562,31 @@ def get_pools(current_user = Depends(get_current_user)):
         # Calculate pot (only count active members)
         pot = pool['stake'] * pool['member_count']
 
-        # Check if user checked in today for this pool
-        cursor.execute("""
-        SELECT COUNT(*) as today_checkin
-        FROM checkins
-        WHERE user_id = %s AND pool_id = %s AND DATE(created_at AT TIME ZONE 'America/Chicago') = DATE(NOW() AT TIME ZONE 'America/Chicago')
-        """, (current_user['id'], pool['id']))
+        # Check if user checked in today for this pool (using Python for timezone)
+        from datetime import datetime
+        import pytz
 
-        checked_in_today = dict(cursor.fetchone())['today_checkin'] > 0
+        central_tz = pytz.timezone('America/Chicago')
+        today_central = datetime.now(central_tz).date()
+
+        cursor.execute("""
+            SELECT created_at
+            FROM checkins
+            WHERE user_id = %s AND pool_id = %s
+            ORDER BY created_at DESC
+            LIMIT 1
+         """, (current_user['id'], pool['id']))
+
+        last_checkin = cursor.fetchone()
+        if last_checkin:
+            last_checkin_date = dict(last_checkin)['created_at']
+            # Convert to Central timezone and get date
+            if last_checkin_date.tzinfo is None:
+                last_checkin_date = pytz.UTC.localize(last_checkin_date)
+            last_checkin_date_central = last_checkin_date.astimezone(central_tz).date()
+            checked_in_today = (last_checkin_date_central == today_central)
+        else:
+            checked_in_today = False
         
         # Get creator's name
         cursor.execute("SELECT name FROM users WHERE id = %s", (pool['creator_id'],))
@@ -614,19 +631,30 @@ def create_checkin(checkin: CheckinCreate, current_user = Depends(get_current_us
     
     member = dict(member)
     
-    # Check if already checked in today
-    cursor.execute("""
-        SELECT COUNT(*) as today_checkins
-        FROM checkins
-        WHERE user_id = %s AND pool_id = %s AND DATE(created_at AT TIME ZONE 'America/Chicago') = DATE(NOW() AT TIME ZONE 'America/Chicago')
-    """, (current_user['id'], checkin.pool_id))
-    
-    today_checkins = dict(cursor.fetchone())['today_checkins']
+    # Check if already checked in today (using Python for timezone)
+from datetime import datetime
+import pytz
 
+central_tz = pytz.timezone('America/Chicago')
+today_central = datetime.now(central_tz).date()
 
-    print(f"[DEBUG] User {current_user['id']} pool {checkin.pool_id}: today_checkins = {today_checkins}")
+cursor.execute("""
+    SELECT created_at
+    FROM checkins
+    WHERE user_id = %s AND pool_id = %s
+    ORDER BY created_at DESC
+    LIMIT 1
+""", (current_user['id'], checkin.pool_id))
+
+last_checkin = cursor.fetchone()
+if last_checkin:
+    last_checkin_date = dict(last_checkin)['created_at']
+    # Convert to Central timezone and get date
+    if last_checkin_date.tzinfo is None:
+        last_checkin_date = pytz.UTC.localize(last_checkin_date)
+    last_checkin_date_central = last_checkin_date.astimezone(central_tz).date()
     
-    if today_checkins > 0:
+    if last_checkin_date_central == today_central:
         conn.close()
         raise HTTPException(status_code=400, detail="Already checked in today")
     
