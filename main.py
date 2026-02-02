@@ -784,10 +784,14 @@ def cancel_pool(pool_id: int, current_user = Depends(get_current_user)):
         conn.close()
         raise HTTPException(status_code=403, detail="Only the pool creator can cancel")
     
-    # Check if week has started
-    from datetime import date
-    print(f"Today: {date.today()}, Week start: {pool['week_start']}")  # Debug log
-    if date.today() >= pool['week_start']:
+    # Check if week has started (use Central Time)
+    from datetime import datetime
+    import pytz
+
+    central_tz = pytz.timezone('America/Chicago')
+    today_central = datetime.now(central_tz).date()
+
+    if today_central >= pool['week_start']:
         conn.close()
         raise HTTPException(status_code=400, detail="Cannot cancel after week has started")
     
