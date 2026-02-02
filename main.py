@@ -404,9 +404,11 @@ def signup(user: UserSignup):
     
     # Create user
     password_hash = hash_password(user.password)
+    email_normalized = user.email.lower().strip() if user.email else None
+    
     cursor.execute(
     "INSERT INTO users (email, name, password_hash, phone, stripe_account_id, stripe_customer_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
-    (user.email, user.name, password_hash, user.phone, stripe_account_id, stripe_customer_id)
+    (email_normalized, user.name, password_hash, user.phone, stripe_account_id, stripe_customer_id)
     )
     user_id = cursor.fetchone()['id']
     conn.commit()
@@ -508,13 +510,14 @@ def create_pool(pool: PoolCreate, current_user = Depends(get_current_user)):
     
     # Add other members (if they exist) - status = 'pending'
     for email in pool.member_emails:
-        cursor.execute("SELECT id, phone FROM users WHERE email = %s", (email,))
+        email_normalized = email.lower().strip()  # Normalize email
+        cursor.execute("SELECT id, phone FROM users WHERE email = %s", (email_normalized,))
         member = cursor.fetchone()
         if member:
             cursor.execute(
                 "INSERT INTO pool_members (pool_id, user_id, status) VALUES (%s, %s, %s) ON CONFLICT (pool_id, user_id) DO NOTHING",
                 (pool_id, member['id'], 'pending')
-            )
+         )
     
     # Update user's total pools
     cursor.execute(
