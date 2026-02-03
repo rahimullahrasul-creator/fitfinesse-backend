@@ -40,8 +40,11 @@ def complete_weekly_pools():
     cursor = conn.cursor()
     
     # Get yesterday's date (Sunday)
-    from datetime import date, timedelta
-    today = date.today()
+    from datetime import datetime, timedelta
+    import pytz
+
+    central_tz = pytz.timezone('America/Chicago')
+    today = datetime.now(central_tz).date()
     yesterday = today - timedelta(days=1)
 
     print(f"[CRON] Today: {today}, Yesterday: {yesterday}")
@@ -353,8 +356,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 def get_week_range():
     """Get the current week's date range (Monday to Sunday)"""
-    from datetime import date, timedelta
-    today = date.today()
+    from datetime import datetime, timedelta
+    import pytz
+    
+    central_tz = pytz.timezone('America/Chicago')
+    today = datetime.now(central_tz).date()
     
     # Calculate this week's Monday
     days_since_monday = today.weekday()
@@ -365,8 +371,11 @@ def get_week_range():
 
 def get_next_week_range():
     """Get the date range for NEXT week (next Monday to Sunday)"""
-    from datetime import date, timedelta
-    today = date.today()
+    from datetime import datetime, timedelta
+    import pytz
+    
+    central_tz = pytz.timezone('America/Chicago')
+    today = datetime.now(central_tz).date()
     
     # Calculate next Monday
     days_until_monday = (7 - today.weekday()) % 7
