@@ -878,6 +878,93 @@ def get_stats(current_user = Depends(get_current_user)):
         "total_checkins_this_week": total_checkins
     }
 
+@app.get("/pools/history")
+def get_pool_history(current_user = Depends(get_current_user)):
+    """Get user's completed pools with results"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get all completed pools where user was a member
+    cursor.execute("""
+        SELECT p.*, pm.checkins as your_checkins, pm.status as your_status
+        FROM pools p
+        JOIN pool_members pm ON p.id = pm.pool_id
+        WHERE pm.user_id = %s AND p.status = 'completed'
+        ORDER BY p.week_end DESC
+    """, (current_user['id'],))
+    
+    pools = []
+    for pool_row in cursor.fetchall():
+        pool = dict(pool_row)
+        pool_id = pool['id']
+        
+        # Get all members and their check-ins
+        cursor.execute("""
+            SELECT u.name, pm.checkins
+            FROM pool_members pm
+            JOIN users u ON pm.user_id = u.id
+            WHERE pm.pool_id = %s AND pm.status = 'active'
+        """, (pool_id,))
+        
+        members = []
+        winners = 0
+        losers = 0
+        
+        for member_row in cursor.fetchall():
+            member = dict(member_row)
+            members.append(member['name'])
+            
+            if member['checkins'] >= pool['weekly_goal']:
+                winners += 1
+            else:
+                losers += 1
+        
+        # Determine user's result
+        you_won = pool['your_checkins'] >= pool['weekly_goal']
+        
+        # Calculate payout
+        total_pot = pool['stake'] * (winners + losers)
+        
+        if winners == 0:
+            # Nobody won
+            your_payout = -pool['stake']
+            outcome = "lost"
+        elif losers == 0:
+            # Everyone won - full refund
+            your_payout = 0
+            outcome = "tied"
+        elif you_won:
+            # You won - calculate your share
+            losers_pot = pool['stake'] * losers
+            platform_fee = losers_pot * 0.05
+            winners_pot = losers_pot - platform_fee
+            profit = winners_pot / winners
+            your_payout = profit
+            outcome = "won"
+        else:
+            # You lost
+            your_payout = -pool['stake']
+            outcome = "lost"
+        
+        pools.append({
+            "id": pool_id,
+            "name": pool['name'],
+            "week_start": pool['week_start'],
+            "week_end": pool['week_end'],
+            "weekly_goal": pool['weekly_goal'],
+            "stake": pool['stake'],
+            "your_checkins": pool['your_checkins'],
+            "total_pot": total_pot,
+            "winners": winners,
+            "losers": losers,
+            "members": members,
+            "outcome": outcome,
+            "payout": your_payout
+        })
+    
+    conn.close()
+    return pools
+
 @app.post("/pools/{pool_id}/settle")
 def settle_pool(pool_id: int, current_user = Depends(get_current_user)):
     """Calculate and distribute winnings for completed pools"""
