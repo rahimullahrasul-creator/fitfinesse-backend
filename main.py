@@ -40,13 +40,17 @@ def complete_weekly_pools():
     cursor = conn.cursor()
     
     # Get yesterday's date (Sunday)
-    yesterday = date.today() - timedelta(days=1)
-    
-    # Find all active pools that ended yesterday (Sunday)
+    from datetime import date, timedelta
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    print(f"[CRON] Today: {today}, Yesterday: {yesterday}")
+
+    # Find all active pools that ended yesterday or earlier
     cursor.execute("""
         SELECT * FROM pools 
         WHERE status = 'active' 
-        AND week_end = %s
+        AND week_end <= %s
     """, (yesterday,))
     
     pools_to_complete = cursor.fetchall()
