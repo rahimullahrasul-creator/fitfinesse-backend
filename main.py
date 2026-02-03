@@ -977,6 +977,15 @@ def manual_trigger_completion(current_user = Depends(get_current_user)):
     """
     complete_weekly_pools()
     return {"message": "Pool completion triggered successfully"}
+
+@app.post("/admin/complete-pools-cron")
+def cron_trigger_completion():
+    """
+    Public endpoint for external cron jobs to trigger completion.
+    No auth required since it's called by trusted scheduler.
+    """
+    complete_weekly_pools()
+    return {"message": "Pool completion triggered successfully", "status": "success"}
     
 
 if __name__ == "__main__":
