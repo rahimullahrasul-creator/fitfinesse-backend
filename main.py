@@ -101,16 +101,13 @@ def complete_weekly_pools():
             # TODO: Track charity donations and operational revenue
             
         elif len(losers) == 0:
-            # Everyone won - full refund, no fee
+            # Everyone won - full refund, NO fee, NO winnings counted
             refund_per_person = pool['stake']
-            
+    
             print(f"[CRON] Pool {pool_id}: All won, full refund ${refund_per_person:.2f} each")
-            
-            for winner in winners:
-                cursor.execute(
-                    "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
-                    (refund_per_person, winner['user_id'])
-                )
+    
+              # Don't update total_winnings - it's just a refund, not profit
+              # Users get their money back but it's not counted as "winnings"
         
         else:
             # Mixed results - 5% fee ONLY on losers' stakes
@@ -118,16 +115,14 @@ def complete_weekly_pools():
             platform_fee = losers_pot * 0.05
             winners_pot = losers_pot - platform_fee
             payout_per_winner = winners_pot / len(winners)
-            
-            # Winners also get their stake back
-            total_payout_per_winner = pool['stake'] + payout_per_winner
-            
-            print(f"[CRON] Pool {pool_id}: Winners get ${total_payout_per_winner:.2f} each (stake + ${payout_per_winner:.2f} profit)")
-            
+    
+            # Only count the PROFIT as winnings, not the refunded stake
+            print(f"[CRON] Pool {pool_id}: Winners get ${payout_per_winner:.2f} profit each")
+    
             for winner in winners:
                 cursor.execute(
                     "UPDATE users SET total_winnings = total_winnings + %s WHERE id = %s",
-                    (total_payout_per_winner, winner['user_id'])
+                    (payout_per_winner, winner['user_id'])  # Only the profit, not stake
                 )
         
         # Mark pool as completed
