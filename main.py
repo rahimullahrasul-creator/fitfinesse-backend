@@ -842,15 +842,22 @@ def get_stats(current_user = Depends(get_current_user)):
     
     streak = dict(cursor.fetchone())['weeks_active']
     
-    # Calculate win rate
+    # Calculate win rate (only count as win if you profited)
     cursor.execute("""
-        SELECT 
-            COUNT(*) as total_pools,
-            SUM(CASE WHEN pm.checkins >= p.weekly_goal THEN 1 ELSE 0 END) as wins
+        SELECT COUNT(*) as total_completed,
+               SUM(CASE 
+                   WHEN pm.checkins >= p.weekly_goal AND EXISTS (
+                       SELECT 1 FROM pool_members pm2
+                       WHERE pm2.pool_id = p.id 
+                       AND pm2.status = 'active'
+                       AND pm2.checkins < p.weekly_goal
+                   ) THEN 1 
+                   ELSE 0 
+               END) as wins
         FROM pool_members pm
-        JOIN pools p ON pm.pool_id = p.id
-        WHERE pm.user_id = %s AND p.status = 'completed'
-    """, (current_user['id'],))
+        JOIN pools p ON pm.id = p.id
+        WHERE pm.user_id = %s AND p.status = 'completed' AND pm.status = 'active'
+    """, (user_id,))
     
     pool_stats = dict(cursor.fetchone())
     win_rate = 0
