@@ -1082,6 +1082,22 @@ def cron_trigger_completion():
     complete_weekly_pools()
     return {"message": "Pool completion triggered successfully", "status": "success"}
     
+@app.post("/admin/reset-winnings")
+def reset_winnings(user_id: int, amount: float, current_user = Depends(get_current_user)):
+    """Temporary endpoint to manually set total_winnings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "UPDATE users SET total_winnings = %s WHERE id = %s",
+        (amount, user_id)
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": f"Updated user {user_id} total_winnings to ${amount}"}
+
 
 if __name__ == "__main__":
     import uvicorn
