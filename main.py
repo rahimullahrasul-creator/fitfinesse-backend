@@ -844,7 +844,7 @@ def get_stats(current_user = Depends(get_current_user)):
     
     # Calculate win rate (only count as win if you profited)
     cursor.execute("""
-        SELECT COUNT(*) as total_completed,
+        SELECT COUNT(*) as total_pools,
                SUM(CASE 
                    WHEN pm.checkins >= p.weekly_goal AND EXISTS (
                        SELECT 1 FROM pool_members pm2
