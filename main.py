@@ -857,7 +857,7 @@ def get_stats(current_user = Depends(get_current_user)):
         FROM pool_members pm
         JOIN pools p ON pm.pool_id = p.id
         WHERE pm.user_id = %s AND p.status = 'completed' AND pm.status = 'active'
-    """, (user_id,))
+    """, (current_user['id'],))
     
     pool_stats = dict(cursor.fetchone())
     win_rate = 0
