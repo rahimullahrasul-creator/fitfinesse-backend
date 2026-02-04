@@ -855,7 +855,7 @@ def get_stats(current_user = Depends(get_current_user)):
                    ELSE 0 
                END) as wins
         FROM pool_members pm
-        JOIN pools p ON pm.id = p.id
+        JOIN pools p ON pm.pool_id = p.id
         WHERE pm.user_id = %s AND p.status = 'completed' AND pm.status = 'active'
     """, (user_id,))
     
