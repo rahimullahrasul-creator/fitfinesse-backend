@@ -571,12 +571,38 @@ def get_pools(current_user = Depends(get_current_user)):
             WHERE pm.pool_id = %s AND pm.status = 'active'
         """, (pool['id'],))
         
+        # Check who checked in today
+        from datetime import datetime
+        import pytz
+
+        central_tz = pytz.timezone('America/Chicago')
+        today_central = datetime.now(central_tz).date()
+
+        cursor.execute("""
+            SELECT user_id
+            FROM checkins
+            WHERE pool_id = %s 
+            AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+        """, (pool['id'], today_central))
+
+        checked_in_today_ids = {row['user_id'] for row in cursor.fetchall()}
+
+        # Get members again (cursor was consumed)
+        cursor.execute("""
+            SELECT u.id, u.name, pm.checkins
+            FROM pool_members pm
+            JOIN users u ON pm.user_id = u.id
+            WHERE pm.pool_id = %s AND pm.status = 'active'
+        """, (pool['id'],))
+
         members = []
         member_status = {}
+        member_checked_in_today = {}
         for member_row in cursor.fetchall():
             member_dict = dict(member_row)
             members.append(member_dict['name'])
             member_status[member_dict['name']] = member_dict['checkins']
+            member_checked_in_today[member_dict['name']] = member_dict['id'] in checked_in_today_ids
         
         # Calculate pot (only count active members)
         pot = pool['stake'] * pool['member_count']
@@ -624,6 +650,7 @@ def get_pools(current_user = Depends(get_current_user)):
             "creator_name": creator_name,
             "members": members,
             "member_status": member_status,
+            "member_checked_in_today": member_checked_in_today,
             "week_start": pool['week_start'],
             "week_end": pool['week_end'],
             "checked_in_today": checked_in_today
