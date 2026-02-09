@@ -388,6 +388,30 @@ def get_next_week_range():
 
 # Routes
 
+@app.put("/auth/update-profile")
+def update_profile(current_user = Depends(get_current_user)):
+    """Update user name and email"""
+    from pydantic import BaseModel
+    
+    class ProfileUpdate(BaseModel):
+        name: str
+        email: str
+    
+    data = ProfileUpdate(**request.json())
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "UPDATE users SET name = %s, email = %s WHERE id = %s",
+        (data.name, data.email, current_user['id'])
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Profile updated successfully"}
+
 @app.get("/")
 def root():
     return {"message": "Fit Finesse API", "status": "running"}
