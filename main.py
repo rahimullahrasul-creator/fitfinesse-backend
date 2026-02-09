@@ -388,16 +388,16 @@ def get_next_week_range():
 
 # Routes
 
+from fastapi import HTTPException, Depends, status, Body
+from pydantic import BaseModel
+
+class ProfileUpdate(BaseModel):
+    name: str
+    email: str
+
 @app.put("/auth/update-profile")
-def update_profile(current_user = Depends(get_current_user)):
+def update_profile(data: ProfileUpdate, current_user = Depends(get_current_user)):
     """Update user name and email"""
-    from pydantic import BaseModel
-    
-    class ProfileUpdate(BaseModel):
-        name: str
-        email: str
-    
-    data = ProfileUpdate(**request.json())
     
     conn = get_db()
     cursor = conn.cursor()
